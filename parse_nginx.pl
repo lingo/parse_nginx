@@ -2,65 +2,82 @@
 use warnings;
 use strict;
 use Regexp::Grammars;
+use JSON;
 use Data::Dumper;
+use Carp;
+use Getopt::Declare;
+
+my $opt = new Getopt::Declare q{
+		--json			Output JSON instead of syntax tree.
+		-j				[ditto]
+
+		--debug			Output debug info
+		-d				[ditto]
+		<infile>			Input nginx.conf file
+	};
+
+	if (!$opt) {
+		print "Err :$!\n";
+	}
+	print Dumper(\$opt);
 
 my $grammar = qr@
-    <logfile: parser_log > 
 	<nocontext:>
+	#<debug:on>
 
 	<[server]>*
 
+	<rule: server>
+		<[comment]>* (server) <block>
+
+	<rule: block>
+		\{ <[line]>* ** (;) <minimize:> \} 
+
 	<rule: line>
-		<comment>
-		| <rewrite>
-		| <if>
-		| <location>
-		| <server>
-		| <directive>
-	
+		(^)
+		<debug:step>
+		( 
+			  <comment>
+			| <rewrite>
+			| <if>
+			| <location>
+			| <server>
+			| <directive>
+		)
+		<debug:off>
+
+	<rule: comment>
+		\# ([^\n]*) $
+
 	<rule: directive>
-		<word>  <[arg]>* <comment>? (;) 
-		#<type={'directive'}>
-
-
-	<rule: server>	<[comment]>* server <block>
+		<word>  <[arg]>* ** <.ws> <minimize:> (;) <comment>? 
 
 	<rule: if>
-		if \( <[condition]>* \) <block>
-		#<type={'if'}>
+		<[comment]>* if \( <[condition]>* \) <block>
 
 	<rule: location>
-		location <cop> <locarg> <block>
-		#<type={'location'}>
-
+		<[comment]>* (location) <cop>? <locarg> <block>
 
 	<rule: rewrite>
-		rewrite (.+?) <.eol>
-		#<type={'rewrite'}>
-
-
-	<rule: block>		\{ <[line]>* ** (;) \}
+		(rewrite) (.+?) <.eol>
 
 	<rule: condition>	<[opd]> (<cop> <[opd]>)?
 
 	<rule: opd>		!? -?<word>
+
 	<rule: cop>		\|\| | \&\& | != | ==? | <<? | >>? | =~ | \+ | - | ~
 	<rule: locarg>	[^{\s]+?
-	<rule: arg>		[^\s;\n]+
+	<token: arg>		[a-zA-Z0-9_\$/\.:+*\\^(){}\[\]=-]+
+
 	<rule: word>	\$?\w+
 
-	<rule: comment>
-		<ws: ([ \t]+)* >
-		\# ([^\n]*) \n
-
 	<rule: eol>		\n+|;
-@xs;
+@xms;
 
 
-my $filename = 'conf.example';
-if ($ARGV[0]) {
-	$filename = $ARGV[0];
-}
+
+
+my $filename = $opt->{'<infile>'} ||'conf.example';
 
 my $file;
 {
@@ -72,27 +89,33 @@ my $file;
 }
 
 #print $file . "\n\n";
-if ($file =~ $grammar) {
-	my $tree = \%/;
-	filter_tree($tree);
-	print Dumper(\%/);
+my $tree;
+if ($file =~ $grammar && %/) {
+	$tree = \%/;
+	if ($opt->{'--json'}) {
+		print encode_json(\%/);
+	} else {
+		print Dumper(\%/);
+	}
+} else {
+	print encode_json({error=>'Parse failed -- bad config file?'});
 }
 
 
-sub filter_tree {
-	my $tree = shift or return;
 
-	for (keys %$tree) {
-		if (ref $tree->{$_} eq 'HASH') {
-			print "Descending into $_\n";
-			filter_tree($tree->{$_});
-		} elsif (ref $tree->{$_} eq 'ARRAY') {
-			my $i;
-			for ($i = 0; $i < scalar @{$tree->{$_}}; $i++) {
-				if (ref @{$tree->{$_}}[$i] eq 'HASH') {
-					filter_tree(@{$tree->{$_}}[$i]);
-				}
-			}
+=pod COMMENTED
+
+SERVER: for (@{$tree->{server}} ) {
+	my $lines = $_->{block}->{line};
+	my $server = {};
+	$server->{directives} = [];
+	for my $line (@$lines) {
+		my $type = (keys %$line)[0];
+		if ($type eq 'directive') {
+			push @{$server->{directives}}, $line->{$type};
 		}
 	}
+	print Dumper(\$server);
 }
+
+=cut
