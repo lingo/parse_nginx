@@ -19,7 +19,7 @@ my $opt = new Getopt::Declare q{
 	if (!$opt) {
 		print "Err :$!\n";
 	}
-	print Dumper(\$opt);
+	#print Dumper(\$opt);
 
 my $grammar = qr@
 	<nocontext:>
@@ -35,7 +35,7 @@ my $grammar = qr@
 
 	<rule: line>
 		(^)
-		<debug:step>
+		#<debug:step>
 		( 
 			  <comment>
 			| <rewrite>
@@ -44,7 +44,7 @@ my $grammar = qr@
 			| <server>
 			| <directive>
 		)
-		<debug:off>
+		# <debug:off>
 
 	<rule: comment>
 		\# ([^\n]*) $
