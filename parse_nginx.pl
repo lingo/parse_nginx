@@ -31,7 +31,7 @@ my $grammar = do {
 	<rule: file> <[server]>+ <[comment]>*
 
 	<rule: server>
-		^ (server) <block>
+		<[comment]>* (server) <block>
 
 	<rule: block>
 		\{ <[line]>* ** (;) <minimize:> \} 
