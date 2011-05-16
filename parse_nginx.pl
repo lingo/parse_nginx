@@ -53,17 +53,18 @@ my $grammar = qr@
 		<command=word>  <[arg]>* ** <.ws> <minimize:> (;) <comment>? 
 
 	<rule: if>
-		<[comment]>* if \( <[condition]>* \) <block>
+		<[comment]>* if \( <condition> \) <block>
 
 	<rule: location>
-		<[comment]>* (location) <cop>? <locarg> <block>
+		<[comment]>* (location) <op=cop>? <where=locarg> <block>
 
 	<rule: rewrite>
-		(rewrite) (.+?) <.eol>
+		(rewrite) (.+?) $
 
-	<rule: condition>	<[opd]> (<cop> <[opd]>)?
+	<rule: andor>	(\&\&) | (\|\|)
+	<rule: condition>	(<[opd]> (<[cop]> <[opd]>)?)+
 
-	<rule: opd>		!? -?<word>
+	<rule: opd>		(\!? \-? \$? \w+)
 
 	<rule: cop>		\|\| | \&\& | != | ==? | <<? | >>? | =~ | \+ | - | ~
 	<rule: locarg>	[^{\s]+?
@@ -71,7 +72,7 @@ my $grammar = qr@
 
 	<rule: word>	\$?\w+
 
-	<rule: eol>		\n+|;
+	#<rule: eol>		\n+|;
 @xms;
 
 
@@ -92,30 +93,28 @@ my $file;
 my $tree;
 if ($file =~ $grammar && %/) {
 	$tree = \%/;
-	if ($opt->{'--json'}) {
-		print encode_json(\%/);
-	} else {
-		print Dumper(\%/);
-	}
 } else {
 	print encode_json({error=>'Parse failed -- bad config file?'});
 }
 
 
-
-=pod COMMENTED
+my %servers;
 
 SERVER: for (@{$tree->{server}} ) {
-	my $lines = $_->{block}->{line};
 	my $server = {};
-	$server->{directives} = [];
-	for my $line (@$lines) {
-		my $type = (keys %$line)[0];
-		if ($type eq 'directive') {
-			push @{$server->{directives}}, $line->{$type};
-		}
-	}
-	print Dumper(\$server);
+	my $lines = $_->{block}->{line};
+
+	my @directives = grep{ $_->{type} eq 'directive' } @$lines;
+	my @name = grep { $_->{directive}->{command} eq 'server_name' } @directives;
+	$server->{name} = $name[0]->{directive}->{arg}->[0];
+	$server->{root} = (grep { $_->{directive}->{command} eq 'root' } @directives)[0]->{directive}->{arg}->[0];
+	$server->{data} = $lines;
+	$server->{dirmap} = {map { $_->{directive}->{command} => $_->{directive} } @directives};
+	$servers{$server->{name}} = $server;
 }
 
-=cut
+if ($opt->{'--json'}) {
+	print encode_json(\%servers);
+} else {
+	print Dumper(\%servers);
+}
