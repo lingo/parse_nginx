@@ -1,7 +1,6 @@
 #!/usr/bin/perl
 use warnings;
 use strict;
-use Regexp::Grammars;
 use JSON;
 use Data::Dumper;
 use Carp;
@@ -21,14 +20,18 @@ my $opt = new Getopt::Declare q{
 	}
 	#print Dumper(\$opt);
 
-my $grammar = qr@
+my $grammar = do {
+	use Regexp::Grammars;
+	qr@
 	<nocontext:>
 	#<debug:on>
 
-	<[server]>*
+	<file>
+
+	<rule: file> <[server]>+ <[comment]>*
 
 	<rule: server>
-		<[comment]>* (server) <block>
+		^ (server) <block>
 
 	<rule: block>
 		\{ <[line]>* ** (;) <minimize:> \} 
@@ -47,7 +50,7 @@ my $grammar = qr@
 		# <debug:off>
 
 	<rule: comment>
-		\# ([^\n]*) (?: $ )
+		\# ([^\n]*) $
 
 	<rule: directive>
 		<command=word>  <[arg]>* ** <.ws> <minimize:> (;) <comment>? 
@@ -68,12 +71,13 @@ my $grammar = qr@
 
 	<rule: cop>		\|\| | \&\& | != | ==? | <<? | >>? | =~ | \+ | - | ~
 	<rule: locarg>	[^{\s]+?
-	<token: arg>		[a-zA-Z0-9_\$/\.:+*\\^(){}\[\]=-]+
+	<token: arg>		[a-zA-Z0-9_\$/\.:+*\\^(){}\[\]=\'\"-]+
 
 	<rule: word>	\$?\w+
 
 	#<rule: eol>		\n+|;
-@xms;
+	@xms;
+};
 
 
 
@@ -97,6 +101,8 @@ if ($file =~ $grammar && %/) {
 	print encode_json({error=>'Parse failed -- bad config file?'});
 }
 
+#print Dumper(\$tree);
+$tree = $tree->{file};
 
 my %servers;
 
@@ -107,7 +113,10 @@ SERVER: for (@{$tree->{server}} ) {
 	my @directives = grep{ $_->{type} eq 'directive' } @$lines;
 	my @name = grep { $_->{directive}->{command} eq 'server_name' } @directives;
 	$server->{name} = $name[0]->{directive}->{arg}->[0];
-	$server->{root} = (grep { $_->{directive}->{command} eq 'root' } @directives)[0]->{directive}->{arg}->[0];
+	my @root = grep { $_->{directive}->{command} eq 'root' } @directives;
+	if (@root) {
+		$server->{root} = $root[0]->{directive}->{arg}->[0];
+	}
 	$server->{data} = $lines;
 	$server->{dirmap} = {map { $_->{directive}->{command} => $_->{directive} } @directives};
 	$servers{$server->{name}} = $server;
