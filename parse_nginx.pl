@@ -37,20 +37,20 @@ my $grammar = qr@
 		(^)
 		#<debug:step>
 		( 
-			  <comment>
-			| <rewrite>
-			| <if>
-			| <location>
-			| <server>
-			| <directive>
+			  <comment> 	<type='comment'>
+			| <rewrite> 	<type='rewrite'>
+			| <if>			<type='if'>
+			| <location>	<type='location'>
+			| <server>		<type='server'>
+			| <directive>	<type='directive'>
 		)
 		# <debug:off>
 
 	<rule: comment>
-		\# ([^\n]*) $
+		\# ([^\n]*) (?: $ )
 
 	<rule: directive>
-		<word>  <[arg]>* ** <.ws> <minimize:> (;) <comment>? 
+		<command=word>  <[arg]>* ** <.ws> <minimize:> (;) <comment>? 
 
 	<rule: if>
 		<[comment]>* if \( <[condition]>* \) <block>
