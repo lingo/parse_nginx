@@ -28,16 +28,15 @@ my $grammar = do {
 
 	<file>
 
-	<rule: file> <[server]>+ <[comment]>*
+	<rule: file> (<[server]> <[comment]>*)+ $
 
 	<rule: server>
-		<[comment]>* (server) <block>
+		( (server) | <[comment]>+ (server) ) <block>
 
 	<rule: block>
 		\{ <[line]>* ** (;) <minimize:> \} 
 
 	<rule: line>
-		(^)
 		#<debug:step>
 		( 
 			  <comment> 	<type='comment'>
@@ -50,7 +49,7 @@ my $grammar = do {
 		# <debug:off>
 
 	<rule: comment>
-		\# ([^\n]*) $
+		\# ([^\n]*) \n
 
 	<rule: directive>
 		<command=word>  <[arg]>* ** <.ws> <minimize:> (;) <comment>? 
@@ -62,7 +61,7 @@ my $grammar = do {
 		<[comment]>* (location) <op=cop>? <where=locarg> <block>
 
 	<rule: rewrite>
-		(rewrite) (.+?) $
+		(rewrite) (.+?) \n
 
 	<rule: andor>	(\&\&) | (\|\|)
 	<rule: condition>	(<[opd]> (<[cop]> <[opd]>)?)+
@@ -76,7 +75,7 @@ my $grammar = do {
 	<rule: word>	\$?\w+
 
 	#<rule: eol>		\n+|;
-	@xms;
+	@xs;
 };
 
 
