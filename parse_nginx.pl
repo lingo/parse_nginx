@@ -52,13 +52,13 @@ my $grammar = do {
 		\# ([^\n]*) \n
 
 	<rule: directive>
-		<command=word>  <[arg]>* ** <.ws> <minimize:> (;) <comment>? 
+		<command=word>  <[arg]>* ** <.ws> (;) <comment>? 
 
 	<rule: if>
-		<[comment]>* if \( <condition> \) <block>
+		((if) | <[comment]>+ (if)) \( <condition> \) <block>
 
 	<rule: location>
-		<[comment]>* (location) <op=cop>? <where=locarg> <block>
+		((location) | <[comment]>+ (location))  <op=cop>? <where=locarg> <block>
 
 	<rule: rewrite>
 		(rewrite) (.+?) \n
@@ -69,12 +69,12 @@ my $grammar = do {
 	<rule: opd>		(\!? \-? \$? \w+)
 
 	<rule: cop>		\|\| | \&\& | != | ==? | <<? | >>? | =~ | \+ | - | ~
+
 	<rule: locarg>	[^{\s]+?
-	<token: arg>		[a-zA-Z0-9_\$/\.:+*\\^(){}\[\]=\'\"-]+
+
+	<token: arg>	[a-zA-Z0-9_\$/\.:+*\\^(){}\[\]=\'\"-]+
 
 	<rule: word>	\$?\w+
-
-	#<rule: eol>		\n+|;
 	@xs;
 };
 
@@ -122,7 +122,7 @@ SERVER: for (@{$tree->{server}} ) {
 }
 
 if ($opt->{'--json'}) {
-	print encode_json(\%servers);
+	print to_json(\%servers, {utf8=>1, pretty=>1});
 } else {
 	print Dumper(\%servers);
 }
