@@ -28,7 +28,13 @@ my $grammar = do {
 
 	<file>
 
-	<rule: file> (<[server]> <[comment]>*)+ $
+	<rule: file> (<[topblock]> <[comment]>*)+ $
+
+	<rule: topblock>
+		<server> | <upstream>
+
+	<rule: upstream>
+		( (upstream) | <[comment]>+ (upstream) ) <name=word> <block>
 
 	<rule: server>
 		( (server) | <[comment]>+ (server) ) <block>
@@ -105,9 +111,11 @@ $tree = $tree->{file};
 
 my %servers;
 
-SERVER: for (@{$tree->{server}} ) {
+SERVER: for (@{$tree->{topblock}} ) {
+	my $type = (keys %$_)[0];
+	next unless $type eq 'server';
 	my $server = {};
-	my $lines = $_->{block}->{line};
+	my $lines = $_->{server}->{block}->{line};
 
 	my @directives = grep{ $_->{type} eq 'directive' } @$lines;
 	my @name = grep { $_->{directive}->{command} eq 'server_name' } @directives;
