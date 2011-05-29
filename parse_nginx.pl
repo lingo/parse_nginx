@@ -5,20 +5,32 @@ use JSON;
 use Data::Dumper;
 use Carp;
 use Getopt::Declare;
+use Storable qw/nfreeze/;
 
-my $opt = new Getopt::Declare q{
-		--json			Output JSON instead of syntax tree.
-		-j				[ditto]
+our %flags = (
+	json	=> 0,
+	debug	=> 0,
+	freeze	=> 0,
+);
 
-		--debug			Output debug info
-		-d				[ditto]
-		<infile>			Input nginx.conf file
-	};
+my $opt = new Getopt::Declare q/
+            --json      	Output JSON instead of syntax tree.
+								{ our %flags; $flags{json} = 1; }
+            -j          	[ditto]
+           
+            --debug     	Output debug info
+								{ our %flags; $flags{debug} = 1; }
+            -d          	[ditto]
+
+            --freeze     	Output Storable frozen data
+								{ our %flags; $flags{freeze} = 1; }
+            -f          	[ditto]
+	/;
 
 	if (!$opt) {
 		print "Err :$!\n";
 	}
-	#print Dumper(\$opt);
+	#print Dumper(\%flags);
 
 my $grammar = do {
 	use Regexp::Grammars;
@@ -49,16 +61,16 @@ my $grammar = do {
 			| <rewrite> 	<type='rewrite'>
 			| <if>			<type='if'>
 			| <location>	<type='location'>
-			| <server>		<type='server'>
+			# | <server>		<type='server'>
 			| <directive>	<type='directive'>
 		)
 		# <debug:off>
 
 	<rule: comment>
-		\# ([^\n]*) \n
+		\# ([^\n]*) (?:\n)
 
 	<rule: directive>
-		<command=word>  <[arg]>* ** <.ws> (;) <comment>? 
+		<command=word>  <[arg]>* ** <.ws> (;)([ \t]*)<comment>? 
 
 	<rule: if>
 		((if) | <[comment]>+ (if)) \( <condition> \) <block>
@@ -87,7 +99,7 @@ my $grammar = do {
 
 
 
-my $filename = $opt->{'<infile>'} ||'conf.example';
+my $filename = $ARGV[0] ||'conf.example';
 
 my $file;
 {
@@ -106,7 +118,14 @@ if ($file =~ $grammar && %/) {
 	print encode_json({error=>'Parse failed -- bad config file?'});
 }
 
-#print Dumper(\$tree);
+if ($flags{debug}) {
+	print Dumper(\$tree);
+	exit 1;
+} elsif($flags{freeze}) {
+	print nfreeze($tree);
+	exit 2;
+}
+
 $tree = $tree->{file};
 
 my %servers;
@@ -129,7 +148,7 @@ SERVER: for (@{$tree->{topblock}} ) {
 	$servers{$server->{name}} = $server;
 }
 
-if ($opt->{'--json'}) {
+if ($flags{json}) {
 	print to_json(\%servers, {utf8=>1, pretty=>1});
 } else {
 	print Dumper(\%servers);
