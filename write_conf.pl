@@ -34,12 +34,12 @@ sub write_directive {
 	print $file $item->{command} if $item->{command};
 	print $file ' ', join(' ', @{$item->{arg}}) if $item->{arg};
 	print $file ' ', $item->{comment} if $item->{comment};
-	print $file "\n";
+	print $file ";\n";
 }
 
 sub write_rewrite {
 	my ($file, $item) = @_;
-	print $file $item, "\n";
+	print $file $item;
 }
 
 sub write_comment {
@@ -59,6 +59,8 @@ sub write_line {
 
 sub write_location {
 	my ($file, $item) = @_;
+	print "\n";
+	pad $file;
 	print $file "location ";
 	print $file $item->{op}, ' ' if $item->{op};
 	print $file $item->{where}, ' ' if $item->{where};
@@ -67,6 +69,8 @@ sub write_location {
 
 sub write_if {
 	my ($file, $item) = @_;
+	print "\n";
+	pad $file;
 	print $file "if (", join(' ', @{$item->{condition}->{opd}}) , ') ';
 	write_block($file, $item->{block});
 }
