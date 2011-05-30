@@ -94,7 +94,6 @@ my $grammar = do {
 	<rule: rewrite>
 		(rewrite) (.+?) \n
 
-	<rule: andor>	(\&\&) | (\|\|)
 	<rule: condition>	(<[opd]> (<[cop]> <[opd]>)?)+
 
 	<rule: opd>		(\!? \-? \$? \w+)
