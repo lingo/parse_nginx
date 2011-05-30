@@ -1,4 +1,14 @@
 #!/usr/bin/perl
+
+=head1 SYNOPSIS
+
+This program parses an nginx configuration file (as found in sites-enabled) and
+produces a parse_tree via Data::Dumper. Output can also be in Perl Storable
+format, or JSON.
+
+=cut
+
+
 use warnings;
 use strict;
 use JSON;
@@ -32,6 +42,9 @@ my $opt = new Getopt::Declare q/
 	}
 	#print Dumper(\%flags);
 
+
+
+# This is the core of the program; a recursive-descent grammar.
 my $grammar = do {
 	use Regexp::Grammars;
 	qr@
@@ -99,8 +112,10 @@ my $grammar = do {
 
 
 
+# Read filename from commandline
 my $filename = $ARGV[0] ||'conf.example';
 
+# Slurp input file
 my $file;
 {
 	local $/;
@@ -110,12 +125,16 @@ my $file;
 	close FILE;
 }
 
-#print $file . "\n\n";
 my $tree;
 if ($file =~ $grammar && %/) {
 	$tree = \%/;
 } else {
-	print encode_json({error=>'Parse failed -- bad config file?'});
+	my $err = 'Parse failed -- bad config file?';
+	if ($flags{json}) {
+		$err = encode_json({error => $err});
+	}
+	print $err;
+	exit -1;
 }
 
 if ($flags{debug}) {

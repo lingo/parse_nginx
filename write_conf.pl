@@ -1,4 +1,12 @@
 #!/usr/bin/perl
+
+=head1 SYNOPSIS
+
+This program attempts to read a parse tree in Perl Storable format, and writes
+an nginx-config file from that tree.
+
+=cut
+
 use warnings;
 use strict;
 use Data::Dumper;
