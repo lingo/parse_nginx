@@ -83,7 +83,7 @@ my $grammar = do {
 		\# ([^\n]*) (?:\n)
 
 	<rule: directive>
-		<command=word>  <[arg]>* ** <.ws> (;)([ \t]*)<comment>? \n
+		<command=word>  <[arg]>* ** <.ws> (;)([ \t]*)<comment>? 
 
 	<rule: if>
 		((if) | <[comment]>+ (if)) \( <condition> \) <block>
